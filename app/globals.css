@@ -1,0 +1,204 @@
+@import "tailwindcss";
+
+/* Vigil design tokens.
+   Night is a deep blue, not black. Warm colours mean a story is alive,
+   cool colours mean it is being let go. */
+@theme {
+  --color-night: #16203a;
+  --color-dusk: #1f2b4d;
+  --color-wick: #33436f;
+  --color-tallow: #f1eadb;
+  --color-smoke: #9ea9c7;
+  --color-flame: #ffb23f;
+  --color-heat: #ff6b3d;
+  --color-moon: #86a4ff;
+  --color-ash: #6e7a99;
+
+  --text-display: clamp(2.1rem, 5.4vw, 3.6rem);
+  --text-display--line-height: 1.05;
+  --text-headline: clamp(1.9rem, 4.2vw, 2.8rem);
+  --text-headline--line-height: 1.1;
+  --text-numeral: clamp(2.4rem, 5vw, 3.4rem);
+  --text-numeral--line-height: 1;
+}
+
+@theme inline {
+  --font-serif: var(--font-spectral), "Iowan Old Style", Georgia, serif;
+  --font-sans: var(--font-schibsted), ui-sans-serif, system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    color-scheme: dark;
+    background: var(--color-night);
+  }
+  body {
+    background: var(--color-night);
+    color: var(--color-tallow);
+    font-size: 1rem;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--color-flame);
+    color: var(--color-night);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-flame);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+  a {
+    text-underline-offset: 4px;
+  }
+  dialog::backdrop {
+    background: rgb(8 12 26 / 0.74);
+  }
+  summary {
+    cursor: pointer;
+  }
+}
+
+/* The burn line is the one signature element: a fuse that shortens as a
+   story runs out of time. The tick marks where voting closes. */
+@layer components {
+  .burn {
+    --h: 3px;
+    --ember: var(--color-flame);
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 24px;
+  }
+  .burn[data-size="detail"] {
+    --h: 4px;
+    height: 30px;
+  }
+  .burn[data-size="lead"] {
+    --h: 6px;
+    height: 36px;
+  }
+  .burn[data-phase="fading"] {
+    --ember: var(--color-heat);
+  }
+  .burn[data-phase="faded"] {
+    --ember: var(--color-ash);
+  }
+
+  .burn-track {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: var(--h);
+    translate: 0 -50%;
+    border-radius: 999px;
+    background: repeating-linear-gradient(
+      90deg,
+      var(--color-wick) 0 2px,
+      transparent 2px 7px
+    );
+  }
+  .burn-fuse {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    height: var(--h);
+    width: var(--to, 0%);
+    translate: 0 -50%;
+    border-radius: 999px;
+    background: var(--ember);
+  }
+  .burn-ember {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    width: calc(var(--h) * 2.8);
+    aspect-ratio: 1;
+    translate: 50% -50%;
+    border-radius: 999px;
+    background: var(--ember);
+    box-shadow:
+      0 0 0 calc(var(--h) * 1.2) color-mix(in oklab, var(--ember) 20%, transparent),
+      0 0 calc(var(--h) * 4) calc(var(--h) * 0.8)
+        color-mix(in oklab, var(--ember) 55%, transparent);
+  }
+  .burn[data-phase="faded"] .burn-fuse {
+    display: none;
+  }
+  .burn-tick {
+    position: absolute;
+    top: 50%;
+    width: 1px;
+    height: calc(var(--h) + 12px);
+    translate: -50% -50%;
+    background: var(--color-smoke);
+    opacity: 0.8;
+  }
+
+  /* The only motion that plays on its own: the lead story burns down to
+     its real length once, when the page opens. */
+  .burn-fuse[data-animate] {
+    animation: burn-in 1600ms cubic-bezier(0.22, 0.7, 0.2, 1) 250ms both;
+  }
+  @keyframes burn-in {
+    from {
+      width: 100%;
+    }
+    to {
+      width: var(--to);
+    }
+  }
+
+  .meter {
+    position: relative;
+    display: flex;
+    gap: 2px;
+    height: 8px;
+    border-radius: 999px;
+    background: var(--color-wick);
+  }
+  .meter[data-size="row"] {
+    height: 5px;
+  }
+  .meter-keep,
+  .meter-fade {
+    flex: 0 1 0%;
+    min-width: 0;
+    height: 100%;
+    border-radius: 999px;
+    transition: flex-grow 600ms cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+  .meter-keep {
+    background: var(--color-flame);
+  }
+  .meter-fade {
+    background: var(--color-moon);
+  }
+  .meter[data-muted] .meter-keep {
+    background: var(--color-ash);
+  }
+  .meter[data-muted] .meter-fade {
+    background: var(--color-dusk);
+  }
+  .meter-mid {
+    position: absolute;
+    left: 50%;
+    top: -4px;
+    bottom: -4px;
+    width: 1px;
+    background: var(--color-tallow);
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .burn-fuse[data-animate] {
+    animation: none;
+  }
+  .meter-keep,
+  .meter-fade {
+    transition: none;
+  }
+}
