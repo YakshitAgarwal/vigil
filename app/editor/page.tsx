@@ -1,12 +1,28 @@
+import { EditorKey } from "@/components/EditorKey";
 import { PageShell } from "@/components/PageShell";
+import { PostButton } from "@/components/PostButton";
+import { listStories } from "@/lib/arkiv/read";
 import { loadInbox } from "@/lib/feeds";
 import { shortDate } from "@/lib/time";
 
 export const metadata = { title: "Inbox" };
-export const revalidate = 300;
+export const dynamic = "force-dynamic";
+
+async function postedIds(): Promise<Set<string>> {
+  try {
+    return new Set((await listStories()).map((s) => s.articleId));
+  } catch (err) {
+    // If Arkiv is unreachable, show the inbox anyway. The server still blocks duplicates.
+    console.error("Couldn’t check which stories are already posted", err);
+    return new Set();
+  }
+}
 
 export default async function Page() {
-  const { items, errors } = await loadInbox();
+  const [{ items, errors }, posted] = await Promise.all([
+    loadInbox(),
+    postedIds(),
+  ]);
 
   return (
     <PageShell>
@@ -17,6 +33,8 @@ export default async function Page() {
         Fresh stories from the feeds. Items missing a title, description,
         category, link or date are left out.
       </p>
+
+      <EditorKey />
 
       {errors.map((e) => (
         <p key={e.feed} role="alert" className="mt-4 text-[14px] text-heat">
@@ -54,6 +72,10 @@ export default async function Page() {
               <p className="mt-3 max-w-[60ch] text-[16px] leading-relaxed text-tallow/90">
                 {item.description}
               </p>
+              <PostButton
+                articleId={item.id}
+                alreadyPosted={posted.has(item.id)}
+              />
             </article>
           ))}
         </div>

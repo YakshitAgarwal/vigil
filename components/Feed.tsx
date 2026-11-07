@@ -8,7 +8,7 @@ import { RulesPanel } from "./RulesPanel";
 import { StoryRow } from "./StoryRow";
 
 export function Feed() {
-  const { ready, now, stories } = useVigil();
+  const { ready, now, stories, error, reload } = useVigil();
 
   if (!ready) {
     return (
@@ -27,10 +27,45 @@ export function Feed() {
   if (live.length === 0) {
     return (
       <PageShell>
-        <p className="pt-24 font-serif text-headline">Nothing is burning right now.</p>
-        <p className="mt-3 max-w-[48ch] text-smoke">
-          New stories appear here when the editor posts them. Faded stories are on the Faded page.
+        <p className="pt-24 font-serif text-headline">
+          Nothing is burning right now.
         </p>
+        <p className="mt-3 max-w-[48ch] text-smoke">
+          New stories appear here when the editor posts them. Faded stories are
+          on the Faded page.
+        </p>
+      </PageShell>
+    );
+  }
+
+  if (live.length === 0) {
+    return (
+      <PageShell>
+        {error ? (
+          <>
+            <p role="alert" className="pt-24 font-serif text-headline">
+              Stories didn’t load.
+            </p>
+            <p className="mt-3 max-w-[48ch] text-smoke">{error}</p>
+            <button
+              type="button"
+              onClick={reload}
+              className="mt-6 min-h-11 rounded-full bg-flame px-5 text-[15px] font-semibold text-night hover:bg-[#ffc064]"
+            >
+              Try again
+            </button>
+          </>
+        ) : (
+          <>
+            <p className="pt-24 font-serif text-headline">
+              Nothing is burning right now.
+            </p>
+            <p className="mt-3 max-w-[48ch] text-smoke">
+              New stories appear here when the editor posts them. Faded stories
+              are on the Faded page.
+            </p>
+          </>
+        )}
       </PageShell>
     );
   }
@@ -44,7 +79,9 @@ export function Feed() {
           <h2 id="burning-h" className="font-serif text-[1.65rem] font-medium">
             Also burning
           </h2>
-          <p className="mt-1 text-[15px] text-smoke">Least time left comes first.</p>
+          <p className="mt-1 text-[15px] text-smoke">
+            Least time left comes first.
+          </p>
           <div className="mt-8">
             {rest.map((story) => (
               <StoryRow key={story.id} story={story} now={now} />

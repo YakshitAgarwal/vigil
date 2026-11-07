@@ -8,9 +8,11 @@
     "start": "next start"
   },
   "dependencies": {
+    "@arkiv-network/sdk": "^1.0.1",
     "next": "^15.5.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "viem": "^2.57.16"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.0.0",
