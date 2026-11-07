@@ -38,4 +38,5 @@ export type Story = {
   };
   /** Set locally when this browser has voted. */
   myVote?: Choice;
+  round: string;
 };

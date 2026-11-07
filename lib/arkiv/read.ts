@@ -15,6 +15,7 @@ export type ChainStory = {
   summary: string;
   url: string;
   expiresAt: number; // approximate, ms since epoch
+  expiresAtBlock: string;
 };
 
 type Body = { headline: string; summary: string; url: string };
@@ -79,7 +80,8 @@ export async function listStories(): Promise<ChainStory[]> {
   for (const e of entities) {
     const body = parseBody(e.body.value as Hex);
     if (!body) continue;
-    const blocksLeft = toBigInt(e.$expiresAt) - currentBlock;
+    const expiresBlock = toBigInt(e.$expiresAt);
+    const blocksLeft = expiresBlock - currentBlock;
     stories.push({
       key: e.$key,
       articleId: e.article_id.value,
@@ -87,6 +89,7 @@ export async function listStories(): Promise<ChainStory[]> {
       postedAt: Number(e.posted_at.value),
       ...body,
       expiresAt: Date.now() + Number(blocksLeft) * BLOCK_MS,
+      expiresAtBlock: expiresBlock.toString(),
     });
   }
   return stories.sort((a, b) => a.expiresAt - b.expiresAt);

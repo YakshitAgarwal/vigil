@@ -1,6 +1,5 @@
 import { bytes, defineSchema, key, str, u64 } from "@arkiv-network/sdk/schema";
 
-// Names must be unique to your project, because anyone can write to Arkiv.
 export const StorySchema = defineSchema("vigil.story", {
   article_id: str().indexed(), // sha-256 of the article URL, used to avoid double posts
   source: str().indexed(),

@@ -1,28 +1,15 @@
 import { ExpirationTime } from "@arkiv-network/sdk";
 import { u64 } from "@arkiv-network/sdk/schema";
 import { stringToBytes, type Address, type Hex } from "viem";
-import { editorClient, evmClient } from "./client";
+import { editorClient } from "./client";
 import { findStoryKey } from "./read";
 import { StorySchema } from "./schema";
+import { createQueue, txFields } from "./tx";
+import { LIFETIME } from "@/lib/rules";
 
-const ROUND = ExpirationTime.fromDays(7);
+const ROUND = ExpirationTime.fromSeconds(Math.round(LIFETIME / 1000));
 
-// One write at a time, so explicit nonces never collide.
-let queue: Promise<unknown> = Promise.resolve();
-function serialized<T>(task: () => Promise<T>): Promise<T> {
-  const run = queue.then(task, task);
-  queue = run.catch(() => undefined);
-  return run;
-}
-
-// Rabdi serves state at the latest block only, and default gas can run out.
-async function txFields(address: Address) {
-  const [nonce, gasPrice] = await Promise.all([
-    evmClient.getTransactionCount({ address, blockTag: "latest" }),
-    evmClient.getGasPrice(),
-  ]);
-  return { nonce, gasPrice, gas: 1_500_000n }; // small entities only
-}
+const editorQueue = createQueue();
 
 export type NewStory = {
   articleId: string;
@@ -43,7 +30,7 @@ export async function postStory(story: NewStory): Promise<{
   if (existing) return { entityKey: existing, duplicate: true };
 
   const { account, wallet } = editorClient();
-  return serialized(async () => {
+  return editorQueue(async () => {
     try {
       const tx = await txFields(account.address);
       const result = await wallet.createEntity(
@@ -80,7 +67,7 @@ export async function postStory(story: NewStory): Promise<{
 /** Sets a new 7-day expiry from now. Run this before the story's last day. */
 export async function extendStory(entityKey: Hex): Promise<{ txHash: Hex }> {
   const { account, wallet } = editorClient();
-  return serialized(async () => {
+  return editorQueue(async () => {
     try {
       const tx = await txFields(account.address);
       const result = await wallet.extendEntity(

@@ -39,7 +39,10 @@ const SEEDS: Seed[] = [
       "Water cut in Nandpur enters a fourth day after the pipe repair misses its deadline",
     summary:
       "Supply to 40 wards has been off since Monday. The water board promised a fix by Thursday evening, but crews are still waiting for a replacement valve. Tanker deliveries are covering about a third of normal demand.",
-    source: { name: "Deccan Dispatch", url: "https://example.com/deccan-dispatch/nandpur-water" },
+    source: {
+      name: "Deccan Dispatch",
+      url: "https://example.com/deccan-dispatch/nandpur-water",
+    },
     postedHoursAgo: 200,
     hoursLeft: 30,
     keep: 412,
@@ -64,7 +67,10 @@ const SEEDS: Seed[] = [
       "Port authority says the cargo backlog will clear within weeks but has not published a schedule",
     summary:
       "Containers have been waiting up to nine days for clearance. The authority blamed a software migration and said a recovery plan would follow, without giving a date.",
-    source: { name: "Harbour Ledger", url: "https://example.com/harbour-ledger/backlog" },
+    source: {
+      name: "Harbour Ledger",
+      url: "https://example.com/harbour-ledger/backlog",
+    },
     postedHoursAgo: 94,
     hoursLeft: 74,
     keep: 203,
@@ -79,10 +85,14 @@ const SEEDS: Seed[] = [
   },
   {
     id: "kerwal-schools",
-    headline: "Reopening date for flood-hit schools in Kerwal is still unconfirmed",
+    headline:
+      "Reopening date for flood-hit schools in Kerwal is still unconfirmed",
     summary:
       "Eleven schools remain closed for repairs. The district office has said inspections are under way but has not said when classes can resume or where students will be taught meanwhile.",
-    source: { name: "Public Notice Desk", url: "https://example.com/public-notice/kerwal-schools" },
+    source: {
+      name: "Public Notice Desk",
+      url: "https://example.com/public-notice/kerwal-schools",
+    },
     postedHoursAgo: 400,
     hoursLeft: 129,
     keep: 530,
@@ -94,10 +104,14 @@ const SEEDS: Seed[] = [
   },
   {
     id: "bus-audit",
-    headline: "Audit finds one in five city buses off the road, with no repair budget announced",
+    headline:
+      "Audit finds one in five city buses off the road, with no repair budget announced",
     summary:
       "The audit covers 612 buses. Most of the idle ones are waiting for parts. The transport department said it would respond to the findings next month.",
-    source: { name: "Deccan Dispatch", url: "https://example.com/deccan-dispatch/bus-audit" },
+    source: {
+      name: "Deccan Dispatch",
+      url: "https://example.com/deccan-dispatch/bus-audit",
+    },
     postedHoursAgo: 8,
     hoursLeft: 160,
     keep: 58,
@@ -105,10 +119,14 @@ const SEEDS: Seed[] = [
   },
   {
     id: "sarovar-lake",
-    headline: "Court asks the state to reply to a petition on Sarovar lake encroachment",
+    headline:
+      "Court asks the state to reply to a petition on Sarovar lake encroachment",
     summary:
       "The petition lists 23 structures built inside the lake boundary. The state has two weeks to respond. Residents say work on several of the sites has continued.",
-    source: { name: "Harbour Ledger", url: "https://example.com/harbour-ledger/sarovar" },
+    source: {
+      name: "Harbour Ledger",
+      url: "https://example.com/harbour-ledger/sarovar",
+    },
     postedHoursAgo: 119,
     hoursLeft: 49,
     keep: 144,
@@ -116,10 +134,14 @@ const SEEDS: Seed[] = [
   },
   {
     id: "rail-fare-review",
-    headline: "Suburban rail fares rise, and the promised review panel has yet to meet",
+    headline:
+      "Suburban rail fares rise, and the promised review panel has yet to meet",
     summary:
       "The new fares took effect on the first of the month. The railway said a panel would review them within two weeks, but no members or dates have been announced.",
-    source: { name: "Public Notice Desk", url: "https://example.com/public-notice/rail-fares" },
+    source: {
+      name: "Public Notice Desk",
+      url: "https://example.com/public-notice/rail-fares",
+    },
     postedHoursAgo: 250,
     hoursLeft: 96,
     keep: 377,
@@ -131,7 +153,10 @@ const SEEDS: Seed[] = [
     headline: "Toll waiver on the coastal highway is extended by one week",
     summary:
       "The waiver was due to end on Friday. The highway authority extended it without saying what would happen afterwards.",
-    source: { name: "Harbour Ledger", url: "https://example.com/harbour-ledger/toll" },
+    source: {
+      name: "Harbour Ledger",
+      url: "https://example.com/harbour-ledger/toll",
+    },
     postedHoursAgo: 157,
     hoursLeft: 11,
     keep: 120,
@@ -143,7 +168,10 @@ const SEEDS: Seed[] = [
     headline: "Night market licence fees are cut after a traders’ protest",
     summary:
       "The municipal body reduced the fee for the next quarter. Traders asked for a permanent change and the body said it would consider that later.",
-    source: { name: "Public Notice Desk", url: "https://example.com/public-notice/night-market" },
+    source: {
+      name: "Public Notice Desk",
+      url: "https://example.com/public-notice/night-market",
+    },
     postedHoursAgo: 240,
     hoursLeft: -72,
     keep: 96,
@@ -152,10 +180,14 @@ const SEEDS: Seed[] = [
   },
   {
     id: "old-bridge",
-    headline: "Old Mill Bridge stays closed while inspectors finish their report",
+    headline:
+      "Old Mill Bridge stays closed while inspectors finish their report",
     summary:
       "The bridge was closed after a crack was found in a support. Inspectors said the report would be ready soon.",
-    source: { name: "Deccan Dispatch", url: "https://example.com/deccan-dispatch/old-bridge" },
+    source: {
+      name: "Deccan Dispatch",
+      url: "https://example.com/deccan-dispatch/old-bridge",
+    },
     postedHoursAgo: 312,
     hoursLeft: -144,
     keep: 180,
@@ -193,6 +225,7 @@ export function hydrateStories(now: number): Story[] {
         snapshotBlock: s.snapshotBlock ?? null,
         renewalTxs: rounds.map((_, i) => fakeHex(`tx:${s.id}:${i}`)),
       },
+      round: "0",
     };
   });
 }

@@ -3,11 +3,20 @@ import type { Phase, Story } from "./types";
 export const HOUR = 3_600_000;
 export const DAY = 24 * HOUR;
 
-/** Every round lasts a week. */
-export const LIFETIME = 7 * DAY;
-/** Voting closes when one day is left, so the keeper has a day to renew. */
-export const VOTING_CLOSES_WHEN_LEFT = DAY;
-export const QUORUM = 300;
+/** Round length in whole minutes. Set NEXT_PUBLIC_ROUND_MINUTES for a short demo round. */
+const ROUND_MINUTES = Number(
+  process.env.NEXT_PUBLIC_ROUND_MINUTES ?? 7 * 24 * 60,
+);
+if (!Number.isInteger(ROUND_MINUTES) || ROUND_MINUTES < 4) {
+  throw new Error(
+    "NEXT_PUBLIC_ROUND_MINUTES must be a whole number of at least 4",
+  );
+}
+
+export const LIFETIME = ROUND_MINUTES * 60_000;
+/** Voting closes with a seventh of the round left, which is one day in a 7-day round. */
+export const VOTING_CLOSES_WHEN_LEFT = LIFETIME / 7;
+export const QUORUM = Number(process.env.NEXT_PUBLIC_QUORUM ?? 300);
 
 export type Tally = {
   total: number;

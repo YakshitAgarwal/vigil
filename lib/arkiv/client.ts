@@ -38,3 +38,24 @@ export function editorClient() {
     wallet: createWalletClient({ chain, transport: http(), account }),
   };
 }
+
+export function relayerAddress(): Address {
+  const address = env("RELAYER_ADDRESS");
+  if (!isAddress(address))
+    throw new Error("RELAYER_ADDRESS is not a valid address");
+  return address;
+}
+
+export function relayerClient() {
+  const privateKey = env("RELAYER_PRIVATE_KEY");
+  if (!/^0x[0-9a-fA-F]{64}$/.test(privateKey)) {
+    throw new Error(
+      "RELAYER_PRIVATE_KEY must be a 0x-prefixed 32-byte hex string",
+    );
+  }
+  const account = privateKeyToAccount(privateKey as Hex);
+  return {
+    account,
+    wallet: createWalletClient({ chain, transport: http(), account }),
+  };
+}

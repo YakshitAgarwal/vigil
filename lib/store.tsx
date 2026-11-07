@@ -13,10 +13,10 @@ import {
 import { QUORUM } from "./rules";
 import type { Choice, Story } from "./types";
 
+type VoteError = { id: string; message: string };
+
 type VigilState = {
-  /** False until the first load from Arkiv has finished, whether it worked or not. */
   ready: boolean;
-  /** Set when the last load failed. Cleared by the next successful load. */
   error: string | null;
   reload: () => void;
   now: number;
@@ -27,9 +27,10 @@ type VigilState = {
   closeVerify: () => void;
   completeVerify: () => void;
   vote: (id: string, choice: Choice) => void;
+  votingId: string | null;
+  voteError: VoteError | null;
 };
 
-/** Shape returned by /api/stories. Declared here so no server code is imported. */
 type ApiStory = {
   key: string;
   articleId: string;
@@ -39,7 +40,13 @@ type ApiStory = {
   summary: string;
   url: string;
   expiresAt: number;
+  expiresAtBlock: string;
+  keep: number;
+  fade: number;
 };
+
+const isNum = (v: unknown): v is number =>
+  typeof v === "number" && Number.isFinite(v);
 
 function isApiStory(v: unknown): v is ApiStory {
   if (typeof v !== "object" || v === null) return false;
@@ -51,10 +58,11 @@ function isApiStory(v: unknown): v is ApiStory {
     typeof s.headline === "string" &&
     typeof s.summary === "string" &&
     typeof s.url === "string" &&
-    typeof s.postedAt === "number" &&
-    Number.isFinite(s.postedAt) &&
-    typeof s.expiresAt === "number" &&
-    Number.isFinite(s.expiresAt)
+    typeof s.expiresAtBlock === "string" &&
+    isNum(s.postedAt) &&
+    isNum(s.expiresAt) &&
+    isNum(s.keep) &&
+    isNum(s.fade)
   );
 }
 
@@ -66,10 +74,10 @@ function toStory(c: ApiStory): Story {
     source: { name: c.source, url: c.url },
     postedAt: c.postedAt,
     expiresAt: c.expiresAt,
-    // Votes are not on Arkiv yet, so every story starts at zero.
-    keep: 0,
-    fade: 0,
+    keep: c.keep,
+    fade: c.fade,
     quorum: QUORUM,
+    round: c.expiresAtBlock,
     rounds: [],
     updates: [],
     arkiv: {
@@ -88,13 +96,32 @@ function parseStories(data: unknown): Story[] {
   return list.filter(isApiStory).map(toStory);
 }
 
-/** Keeps this browser's local votes when the list is refreshed. */
-function mergeLocal(prev: Story[], next: Story[]): Story[] {
-  const old = new Map(prev.map((s) => [s.id, s]));
-  return next.map((s) => {
-    const p = old.get(s.id);
-    return p ? { ...s, keep: p.keep, fade: p.fade, myVote: p.myVote } : s;
-  });
+// Which way this browser voted, per story and round. A renewal starts a new round, so a
+// renewed story lets you vote again. The server enforces one vote, this only remembers it.
+const VOTES_KEY = "vigil-my-votes-v2";
+const voteKey = (id: string, round: string) => `${id}:${round}`;
+
+function loadMyVotes(): Record<string, Choice> {
+  try {
+    const raw = localStorage.getItem(VOTES_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : {};
+    if (typeof parsed !== "object" || parsed === null) return {};
+    const out: Record<string, Choice> = {};
+    for (const [k, c] of Object.entries(parsed)) {
+      if (c === "keep" || c === "fade") out[k] = c;
+    }
+    return out;
+  } catch {
+    return {};
+  }
+}
+
+function saveMyVotes(votes: Record<string, Choice>): void {
+  try {
+    localStorage.setItem(VOTES_KEY, JSON.stringify(votes));
+  } catch {
+    // storage may be unavailable, the vote is still saved on Arkiv
+  }
 }
 
 const VigilContext = createContext<VigilState | null>(null);
@@ -106,14 +133,20 @@ export function VigilProvider({ children }: { children: ReactNode }) {
   const [stories, setStories] = useState<Story[]>([]);
   const [human, setHuman] = useState(false);
   const [verifyOpen, setVerifyOpen] = useState(false);
+  const [votingId, setVotingId] = useState<string | null>(null);
+  const [voteError, setVoteError] = useState<VoteError | null>(null);
   const pending = useRef<{ id: string; choice: Choice } | null>(null);
+  const myVotes = useRef<Record<string, Choice>>({});
 
   const load = useCallback(async (signal?: AbortSignal) => {
     try {
       const res = await fetch("/api/stories", { cache: "no-store", signal });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const next = parseStories(await res.json());
-      setStories((prev) => mergeLocal(prev, next));
+      const next = parseStories(await res.json()).map((s) => {
+        const mine = myVotes.current[voteKey(s.id, s.round)];
+        return mine ? { ...s, myVote: mine } : s;
+      });
+      setStories(next);
       setNow(Date.now());
       setError(null);
     } catch (err) {
@@ -128,6 +161,7 @@ export function VigilProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
+    myVotes.current = loadMyVotes();
     const controller = new AbortController();
     setNow(Date.now());
     void load(controller.signal);
@@ -147,20 +181,83 @@ export function VigilProvider({ children }: { children: ReactNode }) {
     void load();
   }, [load]);
 
-  const applyVote = useCallback((id: string, choice: Choice) => {
-    setStories((prev) =>
-      prev.map((s) =>
-        s.id !== id || s.myVote
-          ? s
-          : {
-              ...s,
-              myVote: choice,
-              keep: s.keep + (choice === "keep" ? 1 : 0),
-              fade: s.fade + (choice === "fade" ? 1 : 0),
-            },
-      ),
-    );
-  }, []);
+  const rememberVote = useCallback(
+    (id: string, round: string | null, choice: Choice) => {
+      if (!round) return;
+      myVotes.current = { ...myVotes.current, [voteKey(id, round)]: choice };
+      saveMyVotes(myVotes.current);
+    },
+    [],
+  );
+
+  // A new vote: show it straight away. The next refresh replaces the count with Arkiv's.
+  const applyVote = useCallback(
+    (id: string, round: string | null, choice: Choice) => {
+      rememberVote(id, round, choice);
+      setStories((prev) =>
+        prev.map((s) =>
+          s.id !== id || s.myVote
+            ? s
+            : {
+                ...s,
+                myVote: choice,
+                keep: s.keep + (choice === "keep" ? 1 : 0),
+                fade: s.fade + (choice === "fade" ? 1 : 0),
+              },
+        ),
+      );
+    },
+    [rememberVote],
+  );
+
+  // A vote that Arkiv already has: the count already includes it.
+  const markVoted = useCallback(
+    (id: string, round: string | null, choice: Choice) => {
+      rememberVote(id, round, choice);
+      setStories((prev) =>
+        prev.map((s) => (s.id === id ? { ...s, myVote: choice } : s)),
+      );
+    },
+    [rememberVote],
+  );
+
+  const submitVote = useCallback(
+    async (id: string, choice: Choice) => {
+      setVotingId(id);
+      setVoteError(null);
+      try {
+        const res = await fetch("/api/vote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ articleId: id, choice }),
+        });
+        const data: { error?: string; choice?: unknown; round?: unknown } =
+          await res.json().catch(() => ({}));
+        const round = typeof data.round === "string" ? data.round : null;
+        if (res.ok) {
+          applyVote(id, round, choice);
+          return;
+        }
+        if (
+          res.status === 409 &&
+          (data.choice === "keep" || data.choice === "fade")
+        ) {
+          markVoted(id, round, data.choice);
+          return;
+        }
+        throw new Error(data.error ?? `HTTP ${res.status}`);
+      } catch (err) {
+        setVoteError({
+          id,
+          message:
+            err instanceof Error ? err.message : "Couldn’t save your vote.",
+        });
+      } finally {
+        setVotingId(null);
+      }
+    },
+    [applyVote, markVoted],
+  );
 
   const vote = useCallback(
     (id: string, choice: Choice) => {
@@ -169,19 +266,19 @@ export function VigilProvider({ children }: { children: ReactNode }) {
         setVerifyOpen(true);
         return;
       }
-      applyVote(id, choice);
+      void submitVote(id, choice);
     },
-    [human, applyVote],
+    [human, submitVote],
   );
 
   const completeVerify = useCallback(() => {
     setHuman(true);
     setVerifyOpen(false);
     if (pending.current) {
-      applyVote(pending.current.id, pending.current.choice);
+      void submitVote(pending.current.id, pending.current.choice);
       pending.current = null;
     }
-  }, [applyVote]);
+  }, [submitVote]);
 
   const closeVerify = useCallback(() => {
     pending.current = null;
@@ -203,6 +300,8 @@ export function VigilProvider({ children }: { children: ReactNode }) {
       closeVerify,
       completeVerify,
       vote,
+      votingId,
+      voteError,
     }),
     [
       ready,
@@ -216,6 +315,8 @@ export function VigilProvider({ children }: { children: ReactNode }) {
       closeVerify,
       completeVerify,
       vote,
+      votingId,
+      voteError,
     ],
   );
 
